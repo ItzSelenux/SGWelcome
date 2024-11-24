@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=SGWelcome
+Comment=Example program
+Exec=sgwelcome
+Icon=start-here
+ButtonText=Open something
