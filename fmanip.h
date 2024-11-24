@@ -136,7 +136,12 @@ void load_folder_list(const gchar *notes_path, GtkWidget *parent_notebook, gint 
 															if (name != NULL && value_str != NULL)
 															{
 																// Set the value of the corresponding variable based on the name
-																if (strcmp(name, "Name") == 0)
+																if (strcmp(name, "OnlyShowIn") == 0)
+																{
+																	if (value_str != getenv("XDG_CURRENT_DESKTOP"));
+																		return;
+																}
+																else if (strcmp(name, "Name") == 0)
 																{
 																	strncpy(ActName, value_str, sizeof(ActName));
 																}
@@ -154,10 +159,6 @@ void load_folder_list(const gchar *notes_path, GtkWidget *parent_notebook, gint 
 																			*newline = '\0'; 
 																		}
 																}
-																//else if (strcmp(name, "IconSize") == 0)
-																//{
-																		//ActIconSize=atoi(value_str);
-																//}
 																else if (strcmp(name, "Exec") == 0)
 																{
 																	strncpy(ActNotif, value_str, sizeof(ActNotif));
