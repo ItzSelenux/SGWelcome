@@ -1,5 +1,6 @@
 void windowinit(void)
 {
+	g_print("This program is created with SGWelcome");
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(window), distrotitle);
 

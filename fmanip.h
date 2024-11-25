@@ -1,4 +1,3 @@
-
 void load_folder_list(const gchar *notes_path, GtkWidget *parent_notebook, gint parent_page)
 {
 	DIR *dir;
@@ -118,81 +117,89 @@ void load_folder_list(const gchar *notes_path, GtkWidget *parent_notebook, gint 
 														const gchar *rinfilename = inentry->d_name;
 
 														snprintf(cfile, sizeof(cfile), "%s/%s", current_folder, rinfilename );
-														FILE *file = fopen(cfile, "r");
 
-														gchar line[ML];
-														gchar ActName[ML];
-														gchar ActNote[ML];
-														gchar ActNotif[ML];
-														gchar ActIcon[ML];
-														//gint ActIconSize;
-														gchar ActBtnLabel[ML];
+														GKeyFile *key_file = g_key_file_new();
 
-														while (fgets(line, sizeof(line), file) != NULL)
+														if (g_key_file_load_from_file(key_file, cfile, G_KEY_FILE_NONE, NULL))
 														{
-															gchar *name = strtok(line, "=");
-															gchar *value_str = strtok(NULL, "=");
+															gchar *ActName = NULL;
+															gchar *ActNote = NULL;
+															gchar *ActNotif = NULL;
+															gchar *ActIcon = NULL;
+															gint NoDisplay = 0;
+															gchar *ActBtnLabel = NULL;
 
-															if (name != NULL && value_str != NULL)
+															gchar *only_show_in = g_key_file_get_string(key_file, "Desktop Entry", "OnlyShowIn", NULL);
+															if (only_show_in != NULL)
 															{
-																// Set the value of the corresponding variable based on the name
-																if (strcmp(name, "OnlyShowIn") == 0)
+																if (strcmp(only_show_in, getenv("XDG_CURRENT_DESKTOP")) == 0)
 																{
-																	if (value_str != getenv("XDG_CURRENT_DESKTOP"));
-																		return;
+																	NoDisplay = 0;
 																}
-																else if (strcmp(name, "Name") == 0)
+																else
 																{
-																	strncpy(ActName, value_str, sizeof(ActName));
+																	NoDisplay = 1;
 																}
-																else if (strcmp(name, "Comment") == 0)
+																g_free(only_show_in);
+															}
+															
+															gchar *currentlang = getenv("LANG"), *lang_key;
+															if (currentlang == NULL)
+															{
+																lang_key="Name";
+															}
+															else
+															{
+																gchar **lang_parts = g_strsplit(currentlang, "_", -1);
+																lang_key = g_strdup_printf("Name[%s]", lang_parts[0]);
+															}
+															ActName = g_key_file_get_string(key_file, "Desktop Entry", lang_key, NULL);
+															if (ActName == NULL)
+															{
+																ActName = g_key_file_get_string(key_file, "Desktop Entry", "Name", NULL);
+															}
+
+															//ActName = g_key_file_get_string(key_file, "Desktop Entry", "Name", NULL);
+															ActNote = g_key_file_get_string(key_file, "Desktop Entry", "Comment", NULL);
+															ActIcon = g_key_file_get_string(key_file, "Desktop Entry", "Icon", NULL);
+															if (ActIcon)
+															{
+																gchar *newline = strchr(ActIcon, '\n');
+																if (newline != NULL)
 																{
-																	strncpy(ActNote, value_str, sizeof(ActNote));
-																}
-																else if (strcmp(name, "Icon") == 0)
-																{
-																	strncpy(ActIcon, value_str, sizeof(ActIcon));
-																	// fix GtkIcon deleting newline
-																		gchar *newline = strchr(ActIcon, '\n');
-																		if (newline != NULL)
-																		{
-																			*newline = '\0'; 
-																		}
-																}
-																else if (strcmp(name, "Exec") == 0)
-																{
-																	strncpy(ActNotif, value_str, sizeof(ActNotif));
-																}
-																else if (strcmp(name, "ButtonText") == 0)
-																{
-																	strncpy(ActBtnLabel, value_str, sizeof(ActBtnLabel));
+																	*newline = '\0';
 																}
 															}
+															ActNotif = g_key_file_get_string(key_file, "Desktop Entry", "Exec", NULL);
+															ActBtnLabel = g_key_file_get_string(key_file, "Desktop Entry", "ButtonText", NULL);
+
+															if (NoDisplay == 0)
+															{
+																GtkWidget *ingrid = gtk_grid_new();
+																gtk_grid_set_column_homogeneous(GTK_GRID(ingrid), TRUE);
+																gtk_grid_set_row_spacing(GTK_GRID(ingrid), 5);
+																	GdkPixbuf *pixbuf = gtk_icon_theme_load_icon(theme, ActIcon, actiondefaultsize, GTK_ICON_LOOKUP_USE_BUILTIN, NULL);
+																	GdkPixbuf *scaled_pixbuf = gdk_pixbuf_scale_simple(pixbuf, actiondefaultsize, actiondefaultsize, GDK_INTERP_BILINEAR);
+																	GtkWidget *icon = gtk_image_new_from_pixbuf(scaled_pixbuf);
+																//GtkWidget *icon = gtk_image_new_from_icon_name(ActIcon, GTK_ICON_SIZE_BUTTON);
+																GtkWidget *label_filename = gtk_label_new(ActName);
+																	gtk_widget_set_tooltip_text(ingrid, ActNote);
+																GtkWidget *label_time = gtk_label_new(ActNote);
+																GtkWidget *Installbutton = gtk_button_new_with_label(ActBtnLabel);
+																	gtk_widget_set_name(Installbutton, ActNotif);
+																	g_signal_connect(Installbutton, "clicked", G_CALLBACK(on_item_activate), NULL);
+
+																gtk_grid_attach(GTK_GRID(ingrid), icon, 0, 0, 1, 1);
+																gtk_grid_attach(GTK_GRID(ingrid), label_filename, 1, 0, 1, 1);
+																if (showcomment)
+																	gtk_grid_attach(GTK_GRID(ingrid), label_time, 2, 0, 1, 1);
+																gtk_grid_attach(GTK_GRID(ingrid), Installbutton, 3, 0, 1, 1);
+
+																gint position = atoi(infilename);
+																gtk_list_box_insert(GTK_LIST_BOX(list), ingrid, -1);
+																gtk_grid_attach(GTK_GRID(notebook_grid), scrolled_list, 0, position, 2, 1);
+															}
 														}
-														GtkWidget *ingrid = gtk_grid_new();
-														gtk_grid_set_column_homogeneous(GTK_GRID(ingrid), TRUE);
-														gtk_grid_set_row_spacing(GTK_GRID(ingrid), 5);
-															GdkPixbuf *pixbuf = gtk_icon_theme_load_icon(theme, ActIcon, actiondefaultsize, GTK_ICON_LOOKUP_USE_BUILTIN, NULL);
-															GdkPixbuf *scaled_pixbuf = gdk_pixbuf_scale_simple(pixbuf, actiondefaultsize, actiondefaultsize, GDK_INTERP_BILINEAR);
-															GtkWidget *icon = gtk_image_new_from_pixbuf(scaled_pixbuf);
-														//GtkWidget *icon = gtk_image_new_from_icon_name(ActIcon, GTK_ICON_SIZE_BUTTON);
-														GtkWidget *label_filename = gtk_label_new(ActName);
-															gtk_widget_set_tooltip_text(ingrid, ActNote);
-														GtkWidget *label_time = gtk_label_new(ActNote);
-														GtkWidget *Installbutton = gtk_button_new_with_label(ActBtnLabel);
-															gtk_widget_set_name(Installbutton, ActNotif);
-															g_signal_connect(Installbutton, "clicked", G_CALLBACK(on_item_activate), NULL);
-
-															g_print("%s", gtk_widget_get_name(Installbutton));
-														gtk_grid_attach(GTK_GRID(ingrid), icon, 0, 0, 1, 1);
-														gtk_grid_attach(GTK_GRID(ingrid), label_filename, 1, 0, 1, 1);
-														if (showcomment)
-															gtk_grid_attach(GTK_GRID(ingrid), label_time, 2, 0, 1, 1);
-														gtk_grid_attach(GTK_GRID(ingrid), Installbutton, 3, 0, 1, 1);
-
-														gint position = atoi(infilename);
-														gtk_list_box_insert(GTK_LIST_BOX(list), ingrid, -1);
-														gtk_grid_attach(GTK_GRID(notebook_grid), scrolled_list, 0, position, 2, 1);
 													}
 												}
 												closedir(indir);
